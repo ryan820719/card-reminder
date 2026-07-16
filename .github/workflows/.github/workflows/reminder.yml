@@ -1,0 +1,28 @@
+name: 信用卡还款提醒
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check-and-remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查并发送还款提醒
+        env:
+          SEND_KEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          CARDS_JSON: ${{ secrets.CARDS_JSON }}
+        run: |
+          echo "$CARDS_JSON" | jq -c '.[]' | while read card; do
+            NAME=$(echo "$card" | jq -r '.name')
+            DUE_DATE=$(echo "$card" | jq -r '.dueDate')
+            REPAID=$(echo "$card" | jq -r '.repaid // false')
+            if [ "$REPAID" = "true" ]; then continue; fi
+            TODAY=$(date +%s)
+            DUE=$(date -d "$DUE_DATE" +%s)
+            DIFF=$(( (DUE - TODAY) / 86400 ))
+            if [ "$DIFF" -le 0 ]; then
+              curl -s -X POST "https://sctapi.ftqq.com/$SEND_KEY.send" -H "Content-Type: application/json" -d "{\"title\":\"信用卡还款提醒\",\"desp\":\"您的信用卡已到期！请尽快还款！\"}"
+            fi
+          done
