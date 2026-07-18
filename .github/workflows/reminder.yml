@@ -15,16 +15,27 @@ jobs:
           RESP=$(curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
             -H "Content-Type: application/json" \
             -d '{"app_id":"cli_aad1f2fd92799bfb","app_secret":"izAzrhlweybnovWLyAUukc0RVmmIzSU4"}')
-          TOKEN=$(echo $RESP | jq -r '.tenant_access_token')
+          TOKEN=$(echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tenant_access_token','FAIL'))")
+          if [ "$TOKEN" = "FAIL" ] || [ -z "$TOKEN" ]; then
+            echo "Token error: $RESP" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
           echo "TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Send reminder
+      - name: Send message
         run: |
           curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
             -H "Authorization: Bearer ${{ steps.token.outputs.TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "chat_id": "oc_49ac12a1f213c7f17c41b0cee4dea3e2",
-              "msg_type": "text",
-              "content": "{\"text\":\"⏰ 信用卡还款提醒！请检查您的账单是否已还。\"}"
-            }'
+            -d "{
+              \"chat_id\": \"oc_49ac12a1f213c7f17c41b0cee4dea3e2\",
+              \"msg_type\": \"text\",
+              \"content\": \"{\\\"text\\\":\\\"信用卡还款提醒\\\"}\"
+            }" > /tmp/result.txt 2>&1
+          cat /tmp/result.txt
+
+      - name: Debug
+        if: always()
+        run: |
+          echo "### API Result" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/result.txt >> $GITHUB_STEP_SUMMARY
