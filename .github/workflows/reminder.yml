@@ -1,4 +1,4 @@
-name: 信用卡还款提醒
+name: Credit Card Reminder
 
 on:
   schedule:
@@ -6,18 +6,25 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-and-remind:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: 发送还款提醒
+      - name: Get token
+        id: token
         run: |
-          TOKEN=$(curl -s -X POST "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
+          RESP=$(curl -s -X POST https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal \
             -H "Content-Type: application/json" \
             -d '{"app_id":"cli_aad1f2fd92799bfb","app_secret":"izAzrhlweybnovWLyAUukc0RVmmIzSU4"}')
-          
-          ACCESS_TOKEN=$(echo "$TOKEN" | sed -n 's/.*"tenant_access_token":"\([^"]*\)".*/\1/p')
-          
-          curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages" \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
+          TOKEN=$(echo $RESP | jq -r '.tenant_access_token')
+          echo "TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Send reminder
+        run: |
+          curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=chat_id" \
+            -H "Authorization: Bearer ${{ steps.token.outputs.TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"receive_id_type":"chat_id","chat_id":"oc_49ac12a1f213c7f17c41b0cee4dea3e2","msg_type":"text","content":"{\\"text\\":\\"信用卡还款提醒：您的信用卡已到期，请尽快还款！\\"}"}'
+            -d '{
+              "chat_id": "oc_49ac12a1f213c7f17c41b0cee4dea3e2",
+              "msg_type": "text",
+              "content": "{\"text\":\"⏰ 信用卡还款提醒！请检查您的账单是否已还。\"}"
+            }'
