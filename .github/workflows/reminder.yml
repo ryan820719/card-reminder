@@ -2,8 +2,13 @@ name: Reminder
 on:
   schedule:
     - cron: '*/1 * * * *'
+  workflow_dispatch:
 jobs:
   send:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/bf20d98f-f14c-4b9d-9b2e-36c013a008e8" -H "Content-Type: application/json" -d '{"msg_type":"text","content":{"text":"信用卡还款提醒"}}'
+      - name: Send
+        run: |
+          curl -X POST "https://open.feishu.cn/open-apis/bot/v2/hook/bf20d98f-f14c-4b9d-9b2e-36c013a008e8" \
+            -H "Content-Type: application/json" \
+            -d '{"msg_type":"text","content":{"text":"信用卡还款提醒"}}'
