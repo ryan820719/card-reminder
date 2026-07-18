@@ -9,18 +9,15 @@ jobs:
   check-and-remind:
     runs-on: ubuntu-latest
     steps:
-      - name: 获取飞书token
-        id: token
+      - name: 发送还款提醒
         run: |
           TOKEN=$(curl -s -X POST "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" \
             -H "Content-Type: application/json" \
             -d '{"app_id":"cli_aad1f2fd92799bfb","app_secret":"izAzrhlweybnovWLyAUukc0RVmmIzSU4"}')
-          echo "$TOKEN" > /tmp/token.json
-
-      - name: 发送还款提醒
-        run: |
-          ACCESS_TOKEN=$(python3 -c "import json; print(json.load(open('/tmp/token.json'))['tenant_access_token'])")
+          
+          ACCESS_TOKEN=$(echo "$TOKEN" | sed -n 's/.*"tenant_access_token":"\([^"]*\)".*/\1/p')
+          
           curl -s -X POST "https://open.feishu.cn/open-apis/im/v1/messages" \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"receive_id_type":"chat_id","chat_id":"oc_49ac12a1f213c7f17c41b0cee4dea3e2","msg_type":"text","content":"{\"text\":\"信用卡还款提醒：您的信用卡已到期，请尽快还款！\"}"}'
+            -d '{"receive_id_type":"chat_id","chat_id":"oc_49ac12a1f213c7f17c41b0cee4dea3e2","msg_type":"text","content":"{\\"text\\":\\"信用卡还款提醒：您的信用卡已到期，请尽快还款！\\"}"}'
